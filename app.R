@@ -6,6 +6,55 @@ library(viridis)
 library(usmap)
 library(dplyr)
 library(sf)
+library(writexl)  # for Excel file export
+
+# Define column names and their labels
+national_result_cols <- c(
+    "cumulativelivessaved",
+    "cumulativeHCVinfectionaverted",
+    "cumulativeHIVinfectionlowaverted",
+    "cumulativeHIVinfectionmedaverted",
+    "cumulativeHIVinfectionhighaverted",
+    "infectiousdiscountedcost",
+    "valueoflivessaved",
+    "Provisional.Drug.Overdose.Deaths"
+)
+
+result_cols <- c(
+    "cumulativelivessaved",
+    "cumulativeHIVinfectionmedaverted",
+    "cumulativeHCVinfectionaverted",
+    "totalsavings",
+    
+    "Provisional.Drug.Overdose.Deaths",
+    "deathsper100k",
+    "injectionsatophc",
+    "pwid",
+    
+    "Population",
+    "livessaved",
+    
+    "cumulativeHIVinfectionlow",
+    "cumulativeHIVinfectionmed",
+    "cumulativeHIVinfectionhigh",
+    "cumulativeHCVinfection",
+    
+    "HIVavertedhighrisk",
+    "HIVavertedmedrisk",
+    "HIVavertedlowrisk",
+    "newHCVrisk",
+    "HCVavertedrisk",
+    "cumulativeHIVinfectionlowaverted",
+    "cumulativeHIVinfectionhighaverted",
+    
+    "HIVdiscountedcostsavingshigh",
+    "HIVdiscountedcostsavingsmed",
+    "HIVdiscountedcostsavingslow",
+    
+    "HCVdiscountedcost",
+    "infectiousdiscountedcost",
+    "valueoflivessaved"
+)
 
 # Load data
 data <- readRDS("finalmerge-07Apr2025.rds")
@@ -24,20 +73,45 @@ ui <- fluidPage(
                 background-color: white;
                 color: black;
             }
-            .selectize-input, .selectize-dropdown {
+            .selectize-input, .selectize-dropdown, input[type='text'], input[type='number'] {
                 color: black;
                 background-color: white;
                 border: 1px solid #ddd;
+                padding: 10px;
+                font-size: 16px;
+                border-radius: 6px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                transition: all 0.3s ease;
+            }
+            .selectize-input:hover, input[type='text']:hover, input[type='number']:hover {
+                border-color: #FF7731;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            }
+            .selectize-input.focus, input[type='text']:focus, input[type='number']:focus {
+                border-color: #FF7731;
+                box-shadow: 0 0 0 2px rgba(255,119,49,0.2);
+                outline: none;
+            }
+            .selectize-dropdown {
+                margin-top: 4px;
+                border-radius: 6px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             }
             .selectize-dropdown-content {
                 background: white;
+                padding: 5px;
             }
             .selectize-dropdown-content .active {
                 background: #FF7731;
                 color: white;
+                border-radius: 4px;
             }
             label {
                 color: black !important;
+                font-size: 16px;
+                font-weight: 500;
+                margin-bottom: 8px;
+                display: block;
             }
             .dataTables_wrapper {
                 color: black;
@@ -46,11 +120,15 @@ ui <- fluidPage(
                 color: black;
                 background-color: white;
                 border: 1px solid #ddd;
+                padding: 8px;
+                border-radius: 6px;
             }
             .dataTables_length select {
                 color: black;
                 background-color: white;
                 border: 1px solid #ddd;
+                padding: 8px;
+                border-radius: 6px;
             }
             .well {
                 background-color: #f8f9fa;
@@ -67,10 +145,22 @@ ui <- fluidPage(
                 background-color: #FF7731;
                 color: white;
                 border: none;
+                padding: 10px 20px;
+                font-size: 16px;
+                border-radius: 6px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                transition: all 0.3s ease;
+                margin: 5px;
             }
             .btn-default:hover {
                 background-color: #FF8C00;
                 color: white;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            }
+            .btn-default:active {
+                transform: translateY(1px);
+                box-shadow: 0 1px 2px rgba(0,0,0,0.1);
             }
         "))
     ),
@@ -92,10 +182,10 @@ ui <- fluidPage(
                       choices = sort(unique(data$Year)),
                       selected = max(data$Year)),
             
-            selectInput("freqinjections",
-                      "Select Injection Frequency:",
-                      choices = sort(unique(data$freqinjections)),
-                      selected = 0.01),
+            selectInput("percentinjections",
+                      "Select Injection Percentage:",
+                      choices = sort(unique(data$percentinjections)),
+                      selected = 1),
             
             selectInput("plotColumn",
                       "Select Column for Plot Color:",
@@ -144,12 +234,106 @@ ui <- fluidPage(
         
         mainPanel(
             tabsetPanel(
-                tabPanel("Data", 
-                    DTOutput("filtered_data")
+                tabPanel("Plots",
+                    plotOutput("plot2"),
+                    plotOutput("plot1")
                 ),
-                tabPanel("Plot",
-                    plotOutput("plot1"),
-                    plotOutput("plot2")
+                tabPanel("Local Results",
+                    h3("Results for subset of data selected on the left", 
+                       style = "text-align: center; margin-bottom: 30px; color: #000000;"),
+                    fluidRow(
+                        style = "padding: 20px;",
+                        lapply(result_cols, function(col) {
+                            label <- switch(col,
+                                "cumulativelivessaved" = "Cumulative Lives Saved",
+                             "cumulativeHIVinfectionmedaverted" = "Cumulative HIV Infection Med Averted",
+                              "cumulativeHCVinfectionaverted" = "Cumulative HCV Infection Averted",
+                            "totalsavings" = "Total Cumulative Savings",
+
+                                "Provisional.Drug.Overdose.Deaths" = "Provisional Drug Overdose Deaths",
+                                "deathsper100k" = "Deaths per 100k",
+                                "injectionsatophc" = "Injections at OPHC",
+                                "pwid" = "PWID",
+
+                                
+                                "Population" = "Population",
+                                "livessaved" = "Lives Saved",
+                                
+                                "cumulativeHIVinfectionlow" = "Cumulative HIV Infection (Low)",
+                                "cumulativeHIVinfectionmed" = "Cumulative HIV Infection (Med)",
+                                "cumulativeHIVinfectionhigh" = "Cumulative HIV Infection (High)",
+                                "cumulativeHCVinfection" = "Cumulative HCV Infection",
+
+                                "HIVavertedhighrisk" = "HIV Averted High Risk",
+                                "HIVavertedmedrisk" = "HIV Averted Med Risk",
+                                "HIVavertedlowrisk" = "HIV Averted Low Risk",
+                                "newHCVrisk" = "New HCV Risk",
+                                "HCVavertedrisk" = "HCV Averted Risk",
+                                "cumulativeHIVinfectionlowaverted" = "Cumulative HIV Infection Low Averted",
+                                "cumulativeHIVinfectionhighaverted" = "Cumulative HIV Infection High Averted",
+
+                                "HIVdiscountedcostsavingshigh" = "HIV Discounted Cost Savings (High)",
+                                "HIVdiscountedcostsavingsmed" = "HIV Discounted Cost Savings (Med)",
+                                "HIVdiscountedcostsavingslow" = "HIV Discounted Cost Savings (Low)",
+
+                                "HCVdiscountedcost" = "HCV Discounted Cost",
+                                "infectiousdiscountedcost" = "Infectious Discounted Cost",
+                                "valueoflivessaved" = "Value of Lives Saved",
+                                "Provisional.Drug.Overdose.Deaths" = "Provisional Drug Overdose Deaths"
+                                
+                            )
+                            column(
+                                width = 4,
+                                div(
+                                    style = "background-color: #f8f9fa; padding: 15px; margin-bottom: 20px; border-radius: 5px; text-align: center;",
+                                    h4(label, style = "margin-bottom: 15px; color: #FF7731;"),
+                                    textOutput(paste0("result_", gsub("\\.", "_", col))),
+                                    style = "font-size: 24px; font-weight: bold;"
+                                )
+                            )
+                        })
+                    )
+                ),
+                tabPanel("National Results",
+                    h3("National results for selected year and injection percentage", 
+                       style = "text-align: center; margin-bottom: 30px; color: #000000;"),
+                    fluidRow(
+                        style = "padding: 20px;",
+                        lapply(national_result_cols, function(col) {
+                            label <- switch(col,
+                                "cumulativelivessaved" = "Cumulative Lives Saved",
+                                "cumulativeHCVinfectionaverted" = "Cumulative HCV Infection Averted",
+                                "cumulativeHIVinfectionlowaverted" = "Cumulative HIV Infection Low Averted",
+                                "cumulativeHIVinfectionmedaverted" = "Cumulative HIV Infection Med Averted",
+                                "cumulativeHIVinfectionhighaverted" = "Cumulative HIV Infection High Averted",
+                                "infectiousdiscountedcost" = "Infectious Discounted Cost",
+                                "valueoflivessaved" = "Value of Lives Saved",
+                                "Provisional.Drug.Overdose.Deaths" = "Provisional Drug Overdose Deaths"
+                            )
+                            column(
+                                width = 4,
+                                div(
+                                    style = "background-color: #f8f9fa; padding: 15px; margin-bottom: 20px; border-radius: 5px; text-align: center;",
+                                    h4(label, style = "margin-bottom: 15px; color: #FF7731;"),
+                                    textOutput(paste0("national_result_", gsub("\\.", "_", col))),
+                                    style = "font-size: 24px; font-weight: bold;"
+                                )
+                            )
+                        })
+                    )
+                ),
+                tabPanel("Data",
+                    fluidRow(
+                        column(6,
+                            checkboxInput("subset_state", "Subset by State", value = TRUE)
+                        ),
+                        column(6,
+                            checkboxInput("subset_county", "Subset by County", value = TRUE)
+                        )
+                    ),
+                    DTOutput("filtered_data"),
+                    downloadButton("downloadData", "Download as Excel", 
+                                 style = "background-color: #FF7731; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-top: 20px;")
                 )
             )
         )
@@ -171,22 +355,34 @@ server <- function(input, output, session) {
                         selected = NULL)
     })
     
+    # Create national dataset
+    national_data <- reactive({
+        req(input$percentinjections, input$year)  # ensure frequency and year are selected
+        
+        # Filter by injection frequency and year only
+        filtered <- data[data$percentinjections == input$percentinjections & data$Year == input$year,]
+        
+        filtered
+    })
+    
     # Create filtered dataset
     filtered_data <- reactive({
-        req(input$state, input$freqinjections, input$year)  # ensure state, frequency, and year are selected
+        req(input$state, input$percentinjections, input$year)  # ensure state, frequency, and year are selected
         
         filtered <- data
         
-        # Filter by state
-        filtered <- filtered[filtered$STATE_NAME == input$state,]
-        
-        # Filter by county if selected
-        if (!is.null(input$county)) {
-            filtered <- filtered[filtered$COUNTYNAME == input$county,]
+        # Filter by state if enabled
+        if (input$subset_state) {
+            filtered <- filtered[filtered$STATE_NAME == input$state,]
+            
+            # Filter by county if enabled and state is filtered
+            if (input$subset_county && !is.null(input$county)) {
+                filtered <- filtered[filtered$COUNTYNAME == input$county,]
+            }
         }
         
         # Filter by injection frequency and year
-        filtered <- filtered[filtered$freqinjections == input$freqinjections & filtered$Year == input$year,]
+        filtered <- filtered[filtered$percentinjections == input$percentinjections & filtered$Year == input$year,]
         
         filtered
     })
@@ -205,14 +401,51 @@ server <- function(input, output, session) {
                   ),
                   rownames = FALSE,
                   style = "bootstrap4") %>%
-        formatRound(columns = c("freqinjections", "deathsper100k", "Population", 
-                              "injectionsatophc", "pwid", "injectionsperperson",
-                              "totalinjectionseverywhere", "pop18plus"), digits = 0)
+        formatRound(columns = c(
+          "Provisional.Drug.Overdose.Deaths",
+          "injectionsatophc",
+          "pwid",
+          "deathsper100k",
+          "Population",
+          "livessaved",
+          "cumulativelivessaved"  ,
+          "cumulativeHIVinfectionlow" ,
+          "cumulativeHIVinfectionmed"    ,
+          "cumulativeHIVinfectionhigh",       
+          "HIVavertedhighrisk"        ,
+          "HIVavertedmedrisk"      ,
+          "HIVavertedlowrisk"            ,    
+          "cumulativeHIVinfectionlowaverted",
+          "cumulativeHIVinfectionmedaverted",
+          "cumulativeHIVinfectionhighaverted",
+          "HIVdiscountedcostsavingshigh" ,
+          "HIVdiscountedcostsavingsmed"  ,
+          "HIVdiscountedcostsavingslow",      
+          "newHCVrisk"        ,
+          "cumulativeHCVinfection"    ,
+          "HCVavertedrisk"              ,
+          "cumulativeHCVinfectionaverted" ,
+          "HCVdiscountedcost"         ,
+          "infectiousdiscountedcost" ,        
+          "valueoflivessaved"  ,
+          "totalsavings"  
+          
+        ), digits = 0)
     })
+    
+    # Download handler for Excel export
+    output$downloadData <- downloadHandler(
+        filename = function() {
+            paste("ophc-data-", Sys.Date(), ".xlsx", sep="")
+        },
+        content = function(file) {
+            write_xlsx(filtered_data(), file)
+        }
+    )
     
     # Render blank plot
     output$plot1 <- renderPlot({
-datasubsetted<-subset(data, data$freqinjections == input$freqinjections & data$Year == input$year)
+datasubsetted<-subset(data, data$percentinjections == input$percentinjections & data$Year == input$year)
 
   #       counties_with_merge<-us_counties |>
   # left_join(datasubsetted$fips, by = join_by(fips))
@@ -253,13 +486,13 @@ ggplot() +
                      trans = switch(input$transformation,
                                   "log2(1+value)" = scales::trans_new(
                                     name = "log2_plus1",
-                                    transform = function(x) log2(1 + x),
-                                    inverse = function(x) 2^x - 1
+                                    transform = function(x) {log2(1 + x)},
+                                    inverse = function(x) {2^x - 1}
                                   ),
                                   "log10(1+value)" = scales::trans_new(
                                     name = "log10_plus1",
-                                    transform = function(x) log10(1 + x),
-                                    inverse = function(x) 10^x - 1
+                                    transform = function(x) {log10(1 + x)},
+                                    inverse = function(x) {10^x - 1}
                                   ),
                                   "No transformation" = "identity")) +
    coord_sf(crs = st_crs("ESRI:102003"), xlim = xlim_expanded) +
@@ -281,7 +514,7 @@ ggplot() +
 
     })
     output$plot2 <- renderPlot({
-      datasubsetted<-subset(data, data$freqinjections == input$freqinjections & data$Year == input$year)
+      datasubsetted<-subset(data, data$percentinjections == input$percentinjections & data$Year == input$year)
       #       counties_with_merge<-us_counties |>
       # left_join(datasubsetted$fips, by = join_by(fips))
       counties_with_merge<-merge(us_counties,
@@ -333,13 +566,13 @@ ggplot() +
                           trans = switch(input$transformation,
                                        "log2(1+value)" = scales::trans_new(
                                          name = "log2_plus1",
-                                         transform = function(x) log2(1 + x),
-                                         inverse = function(x) 2^x - 1
+                                         transform = function(x) {log2(1 + x)},
+                                         inverse = function(x) {2^x - 1}
                                        ),
                                        "log10(1+value)" = scales::trans_new(
                                          name = "log10_plus1",
-                                         transform = function(x) log10(1 + x),
-                                         inverse = function(x) 10^x - 1
+                                         transform = function(x) {log10(1 + x)},
+                                         inverse = function(x) {10^x - 1}
                                        ),
                                        "No transformation" = "identity")) +
         # coord_sf(crs = st_crs("ESRI:102003"), xlim = xlim_expanded,ylim = ylim_expanded) +
@@ -361,10 +594,88 @@ ggplot() +
       
     })
     
+    # Render national result outputs
+    for(col in national_result_cols) {
+        local({
+            col_name <- col
+            output_id <- paste0("national_result_", gsub("\\.", "_", col_name))
+            
+            output[[output_id]] <- renderText({
+                data <- national_data()
+                if(nrow(data) > 0) {
+                    value <- sum(data[[col_name]], na.rm = TRUE)
+                    # Add dollar sign for cost-related metrics and format with commas
+                    formatted_value <- format(round(value), big.mark = ",", scientific = FALSE)
+                    if (grepl("cost|savings", col_name, ignore.case = TRUE)) {
+                        paste0("$", formatted_value)
+                    } else {
+                        formatted_value
+                    }
+                } else {
+                    "No data available"
+                }
+            })
+        })
+    }
     
+    # Render individual result outputs
+    result_cols <- c(
+      "cumulativelivessaved",
+      "cumulativeHIVinfectionmedaverted",
+      "cumulativeHCVinfectionaverted",
+      "totalsavings",
+
+        "Provisional.Drug.Overdose.Deaths",
+        "injectionsatophc",
+        "pwid",
+        "deathsper100k",
+        "Population",
+        "livessaved",
+        
+        "cumulativeHIVinfectionlow",
+        "cumulativeHIVinfectionmed",
+        "cumulativeHIVinfectionhigh",
+        "HIVavertedhighrisk",
+        "HIVavertedmedrisk",
+        "HIVavertedlowrisk",
+        "cumulativeHIVinfectionlowaverted",
+        
+        "cumulativeHIVinfectionhighaverted",
+        "HIVdiscountedcostsavingshigh",
+        "HIVdiscountedcostsavingsmed",
+        "HIVdiscountedcostsavingslow",
+        "newHCVrisk",
+        "cumulativeHCVinfection",
+        "HCVavertedrisk",
+        
+        "HCVdiscountedcost",
+        "infectiousdiscountedcost",
+        "valueoflivessaved"
+        
+    )
     
-    
-    
+    for(col in result_cols) {
+        local({
+            col_name <- col
+            output_id <- paste0("result_", gsub("\\.", "_", col_name))
+            
+            output[[output_id]] <- renderText({
+                data <- filtered_data()
+                if(nrow(data) > 0) {
+                    value <- data[[col_name]][1]
+                    # Add dollar sign for cost-related metrics and format with commas
+                    formatted_value <- format(round(value), big.mark = ",", scientific = FALSE)
+                    if (grepl("cost|savings", col_name, ignore.case = TRUE)) {
+                        paste0("$", formatted_value)
+                    } else {
+                        formatted_value
+                    }
+                } else {
+                    "No data available"
+                }
+            })
+        })
+    }
 }
 
 # Run the application
