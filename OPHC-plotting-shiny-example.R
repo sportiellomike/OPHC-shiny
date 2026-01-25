@@ -47,11 +47,21 @@ interior_state_borders <- st_intersection(us_states) |>
   filter(!(st_geometry_type(geom) %in% c("POINT", "MULTIPOINT")))
 
 
+
+
+
+counties_with_merge<-merge(us_counties,
+                           finalmergesubten,
+                           by = 'fips',
+                           all.x = T)
+
+
+
 library(viridis)
 plot1<-ggplot() +
   # Add counties filled with unemployment levels
   geom_sf(
-    data = counties_with_merge, aes(fill = log2cumulativedeathsaverted), linewidth = 0
+    data = counties_with_merge, aes(fill = cumulativelivessaved), linewidth = 0
   ) +
   # Add interior state boundaries
   geom_sf(
@@ -62,10 +72,30 @@ plot1<-ggplot() +
   theme(
     panel.background =  element_blank(),
     legend.position = "inside",
-    legend.position.inside = c(0.86, 0.32),
+    legend.position.inside = c(0.9, 0.32),
     legend.direction = "vertical",
 
-  )
+  )+
+  scale_fill_viridis(name= 'Cumulative deaths averted',
+                     option = "plasma", 
+                     trans = scales::trans_new(
+                                      name = "log2_plus1",
+                                      transform = function(x) {log2(1 + x)},
+                                      inverse = function(x) {2^x - 1}
+                                    )) +
+  # coord_sf(crs = st_crs("ESRI:102003"), xlim = xlim_expanded,ylim = ylim_expanded) +
+  theme(
+    panel.background =  element_blank(),
+    legend.text = element_text(size=12),
+    legend.title = element_text(size=14),
+    axis.text = element_text(size=12))
+
+
+plot1
+ggsave(plot = plot1, filename = "cumulativedeathsaverted_USA_15Oct2025.png", width = 15, units = "in", dpi = 2000)
+ggsave(plot = plot1, filename = "cumulativedeathsaverted_USA_17Oct2025wide.svg", width = 25, units = "in", dpi = 2000)
+ggsave(plot = plot1, filename = "cumulativedeathsaverted_USA_17Oct2025wide.svg", width = 25,height=12, units = "in", dpi = 2000)
+
 
 
 

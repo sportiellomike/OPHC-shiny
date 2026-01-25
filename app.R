@@ -9,7 +9,7 @@ library(sf)
 library(writexl)  # for Excel file export
 
 # Load data
-data <- readRDS("finalmerge-09Apr2025.rds")
+data <- readRDS("finalmerge-24Jan2026.rds")
 # data2 <- readRDS("finalmerge-09Apr2025.rds")
 
 # us_states<-us_map(
@@ -180,7 +180,7 @@ ui <- fluidPage(
             selectInput("state", 
                       "Select State:",
                       choices = sort(unique(data$STATE_NAME)),
-                      selected = "New York"),
+                      selected = "Georgia"),
             
             selectInput("county", 
                       "Select County:",
@@ -192,7 +192,7 @@ ui <- fluidPage(
                       selected = max(data$Year)),
             
             selectInput("percentinjections",
-                      "Select Injection Percentage:",
+                      "Select what percent of injections happent at OPHC:",
                       choices = sort(unique(data$percentinjections)),
                       selected = 1),
             
@@ -238,7 +238,7 @@ ui <- fluidPage(
             
             textInput("legendMin",
                      "Legend Minimum:",
-                     value = ""),
+                     value = 0),
             
             textInput("legendMax",
                      "Legend Maximum:",
@@ -252,7 +252,7 @@ ui <- fluidPage(
                             style = "text-align: center; margin-bottom: 30px; color: #000000;"),
                     plotOutput("plot2"),
                     plotOutput("plot1"),
-                    h5('Right click the state plot and/or national plot once you have selected the subset of data on the left.'),
+                    h5('Right click the state plot and/or national plot once you have selected the subset of data on the left to copy and paste the plot.'),
                        h5('Though the data for Connecticut and some Alaska counties are factored into the results, they may not be plotted given the differences in mapping boundary names and how the CDC reported the data.') ,
                        h5('Make sure to transform the axis to optimize coloring of the plot and make the legend legible with text size and color bar free text'),
                     h4("Legend Key", style = "text-align: center; margin-bottom: 10px; color: #000000;"),
