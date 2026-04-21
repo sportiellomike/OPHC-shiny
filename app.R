@@ -10,7 +10,7 @@ library(writexl)  # for Excel file export
 
 # Load data
 # data <- readRDS("finalmerge-24Jan2026.rds")
-data <- readRDS("finalmerge-short-18Mar2026.rds")
+data <- readRDS("finalmerge-30Mar2026.rds")
 
 # data2 <- readRDS("finalmerge-09Apr2025.rds")
 
@@ -28,6 +28,7 @@ us_counties<-readRDS("us_counties.rds")
 
 # Define column names and their labels
 national_result_cols <- c(
+  # "cumulativedeaths",
     "cumulativelivessaved",
     "cumulativeHCVinfectionaverted",
     "cumulativeHIVinfectionlowaverted",
@@ -39,6 +40,7 @@ national_result_cols <- c(
 )
 
 result_cols <- c(
+  "cumulativedeaths",
     "cumulativelivessaved",
     "cumulativeHIVinfectionmedaverted",
     "cumulativeHCVinfectionaverted",
@@ -175,7 +177,7 @@ ui <- fluidPage(
             }
         "))
     ),
-    titlePanel("OPHC Data Explorer"),
+    titlePanel("OPC Data Explorer"),
     
     sidebarLayout(
         sidebarPanel(
@@ -194,7 +196,7 @@ ui <- fluidPage(
                       selected = max(data$Year)),
             
             selectInput("percentinjections",
-                      "Select what percent of injections happent at OPHC:",
+                      "Select what percent of injections happent at OPC:",
                       choices = sort(unique(data$percentinjections)),
                       selected = 1),
             
@@ -258,19 +260,19 @@ ui <- fluidPage(
                        h5('Though the data for Connecticut and some Alaska counties are factored into the results, they may not be plotted given the differences in mapping boundary names and how the CDC reported the data.') ,
                        h5('Make sure to transform the axis to optimize coloring of the plot and make the legend legible with text size and color bar free text'),
                     h4("Legend Key", style = "text-align: center; margin-bottom: 10px; color: #000000;"),
-                       h5("cumulativelivessaved: Deaths averted due to OPHC"), 
+                       h5("cumulativelivessaved: Deaths averted due to OPC"), 
                           h5("deathsper100k: Deaths per 100,000 people"),
-                             h5("injectionsatophc: Number of injections at OPHC"), 
+                             h5("injectionsatophc: Number of injections at OPC"), 
                                 h5("pwid: Number of people who inject drugs"), 
-                                   h5("totalinjectionseverywhere: Number of injections in and out of the OPHC"), 
+                                   h5("totalinjectionseverywhere: Number of injections in and out of the OPC"), 
                        
                                       h5('cumulativeHIVinfectionlowaverted: Cumulative HIV infections averted assuming low HIV incidence model'),
                                          h5('cumulativeHIVinfectionmedaverted: Cumulative HIV infections averted assuming medium HIV incidence model'),
                                             h5('cumulativeHIVinfectionhighaverted: Cumulative HIV infections averted assuming high HIV incidence model'),
                                                h5('cumulativeHCVinfectionaverted: Cumulative Hepatitis C Virus infections averted'),
-                                                  h5("totalsavings: Total monetary savings from OPHC including both discounted costs from infections that did not occur and the 'statistical value' of life"),
+                                                  h5("totalsavings: Total monetary savings from OPC including both discounted costs from infections that did not occur and the 'statistical value' of life"),
                                                      h5('valueoflivessaved: Statistical value of deaths averted'),
-                                                        h5('infectiousdiscountedcost: Costs saved from infections that did not occur due to OPHC')
+                                                        h5('infectiousdiscountedcost: Costs saved from infections that did not occur due to OPC')
                 ),
                 tabPanel("Local Results",
                     h3("Results for subset of data selected on the left", 
@@ -279,6 +281,7 @@ ui <- fluidPage(
                         style = "padding: 20px;",
                         lapply(result_cols, function(col) {
                             label <- switch(col,
+                                            "cumulativedeaths" = "Cumulative deaths",
                                 "cumulativelivessaved" = "Cumulative Lives Saved",
                              "cumulativeHIVinfectionmedaverted" = "Cumulative HIV Infection Med Averted",
                               "cumulativeHCVinfectionaverted" = "Cumulative HCV Infection Averted",
@@ -286,7 +289,7 @@ ui <- fluidPage(
 
                                 "Provisional.Drug.Overdose.Deaths" = "Provisional Drug Overdose Deaths",
                                 "deathsper100k" = "Deaths per 100k",
-                                "injectionsatophc" = "Injections at OPHC",
+                                "injectionsatophc" = "Injections at OPC",
                                 "pwid" = "PWID",
 
                                 
@@ -342,7 +345,7 @@ ui <- fluidPage(
                                 "cumulativeHIVinfectionhighaverted" = "Cumulative HIV Infection High Averted",
                                 "infectiousdiscountedcost" = "Infectious Discounted Cost",
                                 "valueoflivessaved" = "Statistical Value of Lives Saved",
-                                "cumulativedeaths" = "Actual deaths January 2020-June 2024"
+                                "cumulativedeaths" = "Actual deaths July 2019-June 2025"
                             )
                             column(
                                 width = 4,
@@ -654,6 +657,7 @@ ggplot() +
     
     # Render individual result outputs
     result_cols <- c(
+      "cumulativedeaths",
       "cumulativelivessaved",
       "cumulativeHIVinfectionmedaverted",
       "cumulativeHCVinfectionaverted",
